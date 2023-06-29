@@ -2,12 +2,6 @@ const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema(
   {
-    code: {
-      type: Number,
-      required: true,
-      unique: true,
-      default: Math.floor(Math.random() * 10000000),
-    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       required: [true, "Order must belong to a user!"],
