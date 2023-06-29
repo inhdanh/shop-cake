@@ -6,7 +6,7 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: [true, "A product must have a name"],
     trim: true,
-    // unique: true,
+    unique: true,
   },
   description: String,
   slug: String,

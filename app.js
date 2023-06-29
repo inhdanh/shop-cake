@@ -13,10 +13,12 @@ const AppError = require("./utils/appError");
 const globalErrorHandler = require("./controllers/errorController");
 
 const productRouter = require("./routes/productRoutes");
+const userRouter = require("./routes/userRoutes");
 
 const app = express();
 
 app.enable("trust proxy");
+app.set("view engine", "pug");
 
 app.use(cors());
 // app.use(cors({ origin: 'https://www.natours.com' }));
@@ -70,13 +72,14 @@ app.use(compression());
 // Test middleware
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
-  console.log("req.cookies", req.cookies);
+  // console.log("req.cookies", req.cookies);
   next();
 });
 
 // Routes
 // app.use("/", viewRouter);
 app.use("/api/v1/products", productRouter);
+app.use("/api/v1/users", userRouter);
 
 app.all("*", (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
