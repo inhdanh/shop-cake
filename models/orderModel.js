@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Product = require("./productModel");
 
 const orderSchema = new mongoose.Schema(
   {
@@ -57,6 +58,20 @@ orderSchema.pre(/^find/, function (next) {
   });
 
   next();
+});
+
+orderSchema.statics.calcProductStock = async function (products) {
+  const productIds = products.map((p) => p._id.toString());
+
+  for (const productId of productIds) {
+    const product = await Product.findById(productId);
+    product.countInStock -= 1;
+    await product.save();
+  }
+};
+
+orderSchema.post("save", function () {
+  this.constructor.calcProductStock(this.products);
 });
 
 const Order = mongoose.model("Order", orderSchema);
