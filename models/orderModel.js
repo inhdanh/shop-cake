@@ -53,7 +53,7 @@ orderSchema.pre(/^find/, function (next) {
     select: "-__v",
   }).populate({
     path: "products",
-    select: "-__v",
+    select: "-__v -countInStock",
   });
 
   next();

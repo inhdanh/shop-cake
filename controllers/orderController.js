@@ -13,6 +13,11 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     return next(new AppError("No products found", 400));
   }
 
+  const order = await Order.create({
+    user: req.user.id,
+    products: req.body.products,
+  });
+
   for (const productId of products) {
     const product = await Product.findById(productId);
 
@@ -28,11 +33,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     await product.save();
   }
 
-  const order = await Order.create({
-    user: req.user.id,
-    products: req.body.products,
-  });
-
   res.status(201).json({
     status: "success",
     data: { data: order },
@@ -41,11 +41,17 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
 exports.updateOrder = catchAsync(async (req, res, next) => {
   const products = req.body.products;
-  const previousOrder = await Order.findById(req.params.id);
 
+  const previousOrder = await Order.findById(req.params.id);
   if (!previousOrder) {
     return next(new AppError("Order not found!", 400));
   }
+
+  // Update the order with the new products
+  const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  });
 
   // Calculate the count difference for each product
   const countDifference = {};
@@ -69,22 +75,16 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
       return res.status(404).json({ message: "Product not found." });
     }
 
-    if (product.countInStock < difference) {
+    if (product.countInStock + difference < 0) {
       return res
         .status(400)
         .json({ message: "Insufficient stock for the selected product." });
     }
 
     // Update the countInStock based on the difference
-    product.countInStock -= difference;
+    product.countInStock += difference;
     await product.save();
   }
-
-  // Update the order with the new products
-  const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
 
   res.status(200).json({
     status: "success",
