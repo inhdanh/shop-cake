@@ -10,13 +10,20 @@ const orderSchema = new mongoose.Schema(
       required: [true, "Order must belong to a user!"],
       ref: "User",
     },
-    products: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
-        required: [true, "Order must contain products!"],
+    products: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+        },
+      ],
+      validate: {
+        validator: function (arr) {
+          return arr.length > 0;
+        },
+        message: "Order must contain at least one product!",
       },
-    ],
+    },
     shippingAddress: String,
     paymentMethod: {
       type: String,
@@ -117,6 +124,34 @@ orderSchema.post("save", async function () {
   for (const productId in this.differenceProducts) {
     const product = await Product.findById(productId);
     product.countInStock -= this.differenceProducts[productId];
+    await product.save();
+  }
+});
+
+orderSchema.pre("findOneAndDelete", async function (next) {
+  this.orderDelete = await this.model.findOne(this.getQuery());
+
+  if (!this.orderDelete) {
+    return next(new AppError("No document found with that ID", 404));
+  }
+
+  if (this.orderDelete.status === "Delivered") {
+    return next(
+      new AppError(
+        "You cannot delete the order once it has been delivered!",
+        400
+      )
+    );
+  }
+
+  next();
+});
+
+orderSchema.post("findOneAndDelete", async function () {
+  const productsObj = _.countBy(this.orderDelete.products.map((p) => p._id));
+  for (const productId in productsObj) {
+    const product = await Product.findById(productId);
+    product.countInStock += productsObj[productId];
     await product.save();
   }
 });
