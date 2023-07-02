@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Product = require("./productModel");
 const AppError = require("../utils/appError");
+const _ = require("lodash");
 
 const orderSchema = new mongoose.Schema(
   {
@@ -26,8 +27,8 @@ const orderSchema = new mongoose.Schema(
     status: {
       type: String,
       required: true,
-      enum: ["Pending", "Preparing", "Shipped", "Delivered"],
-      default: "Pending",
+      enum: ["Cancelled", "Preparing", "Delivered"],
+      default: "Preparing",
     },
     shippingPrice: {
       type: Number,
@@ -61,14 +62,51 @@ orderSchema.pre(/^find/, function (next) {
   next();
 });
 
+orderSchema.methods.getDifferentProducts = function (newProductsObj) {
+  const difference = {};
+
+  // Find the difference between oldProducts and newProducts
+  for (let key in this.currentProductsObj) {
+    difference[key] = (newProductsObj[key] || 0) - this.currentProductsObj[key];
+  }
+
+  // Add the new products to the difference object
+  for (let key in newProductsObj) {
+    if (!(key in this.currentProductsObj)) {
+      difference[key] = newProductsObj[key];
+    }
+  }
+  return difference;
+};
+
 orderSchema.pre("save", async function (next) {
   const productIds = this.products.map((p) => p._id.toString());
+  const productsObj = _.countBy(productIds);
 
-  for (const productId of productIds) {
-    const product = await Product.findById(productId);
+  this.currentProductsObj = {};
+  for (const productId in productsObj) {
+    this.currentProductsObj[productId] = 0;
+  }
 
-    if (product.countInStock <= 0) {
-      return next(new AppError(`Product ${product.name} is out of stock`, 400));
+  if (!this.isNew) {
+    const order = await Order.findById(this._id);
+    this.currentProductsObj = _.countBy(order.products.map((p) => p._id));
+  }
+
+  this.differenceProducts = this.getDifferentProducts(productsObj);
+
+  for (const productId in this.differenceProducts) {
+    if (this.differenceProducts[productId] > 0) {
+      const product = await Product.findById(productId);
+
+      if (
+        product.countInStock + this.currentProductsObj[productId] <
+        productsObj[productId]
+      ) {
+        return next(
+          new AppError(`Product ${product.name} is out of stock!`, 400)
+        );
+      }
     }
   }
 
@@ -76,11 +114,9 @@ orderSchema.pre("save", async function (next) {
 });
 
 orderSchema.post("save", async function () {
-  const productIds = this.products.map((p) => p._id.toString());
-
-  for (const productId of productIds) {
+  for (const productId in this.differenceProducts) {
     const product = await Product.findById(productId);
-    product.countInStock -= 1;
+    product.countInStock -= this.differenceProducts[productId];
     await product.save();
   }
 });
