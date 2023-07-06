@@ -1,3 +1,5 @@
+const omit = require("lodash/omit");
+
 class APIFeatures {
   constructor(query, queryString) {
     this.query = query;
@@ -7,12 +9,13 @@ class APIFeatures {
   filter() {
     const queryObj = { ...this.queryString };
     const exclucedFields = ["page", "sort", "limit", "fields"];
-    exclucedFields.forEach((el) => delete queryObj[el]);
+    // exclucedFields.forEach((el) => delete queryObj[el]);
 
-    let queryStr = JSON.stringify(queryObj);
+    let queryStr = JSON.stringify(omit(queryObj, exclucedFields));
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    this.query = this.query.find(JSON.parse(queryStr));
+    let queryParsed = JSON.parse(queryStr);
+    this.query = this.query.find(queryParsed);
 
     return this;
   }

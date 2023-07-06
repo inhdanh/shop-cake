@@ -2,6 +2,7 @@ const express = require("express");
 
 const userController = require("../controllers/userController");
 const authController = require("../controllers/authController");
+const orderRouter = require("../routes/orderRoutes");
 
 const router = express.Router();
 
@@ -27,6 +28,8 @@ router.delete("/deleteMe", userController.deleteMe);
 
 // Restrict to admin all routes after this middleware
 router.use(authController.restrictTo("admin"));
+
+router.use("/:userId/orders", orderRouter);
 
 router
   .route("/")
