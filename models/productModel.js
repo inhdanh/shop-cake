@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const slugify = require("slugify");
+const { toLowerCaseSlug } = require("../utils/slug");
 
 const productSchema = new mongoose.Schema({
   name: {
@@ -15,7 +15,6 @@ const productSchema = new mongoose.Schema({
     required: [true, "A product must have a price"],
     min: [0, "Price cannot be negative"],
   },
-  image: String,
   images: [String],
   countInStock: {
     type: Number,
@@ -28,7 +27,7 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ slug: 1 });
 
 productSchema.pre("save", function (next) {
-  this.slug = slugify(this.name, { lower: true });
+  this.slug = toLowerCaseSlug(this.name);
   next();
 });
 
