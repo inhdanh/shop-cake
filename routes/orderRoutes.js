@@ -6,6 +6,15 @@ const router = express.Router({ mergeParams: true });
 
 router.use(authController.protect);
 
+router.get(
+  "/me",
+  (req, res, next) => {
+    req.params.userId = req.user.id;
+    next();
+  },
+  orderController.getAllOrders
+);
+
 router
   .route("/")
   .get(authController.restrictTo("admin"), orderController.getAllOrders)
