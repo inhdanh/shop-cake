@@ -8,14 +8,31 @@ class APIFeatures {
 
   filter() {
     const queryObj = { ...this.queryString };
-    const exclucedFields = ["page", "sort", "limit", "fields"];
-    // exclucedFields.forEach((el) => delete queryObj[el]);
+    const exclucedFields = ["page", "sort", "limit", "fields", "search"];
 
     let queryStr = JSON.stringify(omit(queryObj, exclucedFields));
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
     let queryParsed = JSON.parse(queryStr);
     this.query = this.query.find(queryParsed);
+
+    return this;
+  }
+
+  search() {
+    if (this.queryString.search) {
+      const searchConditions = Object.keys(this.queryString.search).map(
+        (key) => {
+          return {
+            [key]: { $regex: this.queryString.search[key], $options: "i" },
+          };
+        }
+      );
+
+      this.query = this.query.find({
+        $or: searchConditions,
+      });
+    }
 
     return this;
   }
